@@ -1,8 +1,38 @@
 import asyncio
-from mavsdk import System
+import importlib
+import os
+import sys
+
+from mavsdk_runtime import start_mavsdk_server
+
+
+def _load_mavsdk_system():
+    import platform
+
+    original_version_tuple = platform.python_version_tuple
+
+    def _compat_python_version_tuple():
+        version = original_version_tuple()
+        if len(version) >= 2:
+            try:
+                major = int(version[0])
+                minor = int(version[1])
+                if major == 3 and minor >= 6:
+                    return ("3", "6", "0")
+            except ValueError:
+                pass
+        return ("3", "6", "0")
+
+    platform.python_version_tuple = _compat_python_version_tuple
+    module = importlib.import_module("mavsdk")
+    return module.System
+
+
+System = _load_mavsdk_system()
 
 async def run():
-    drone = System()
+    start_mavsdk_server()
+    drone = System(mavsdk_server_address="localhost", port=50051)
     # Connect to the local simulator broadcasting from Docker
     await drone.connect(system_address="udpin://0.0.0.0:14540")
 

@@ -1,9 +1,12 @@
 {
   "name": "DronePlay OS Environment",
-  "image": "mcr.microsoft.com/devcontainers/python:3.10",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.10-bookworm",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": false
+    }
   },
+  "postCreateCommand": "python3 -m venv .venv && . .venv/bin/activate && python -m pip install --upgrade pip && python -m pip install -r requirements.txt",
   "customizations": {
     "vscode": {
       "extensions": [
