@@ -1,8 +1,9 @@
 import os
 import platform
 import shutil
+import socket
 import subprocess
-import sys
+import time
 import urllib.request
 
 
@@ -32,6 +33,17 @@ def ensure_mavsdk_server(binary_path="/tmp/mavsdk/mavsdk_server", port=50051):
     return binary_path
 
 
+def _wait_for_port(port=50051, timeout=10):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=1):
+                return True
+        except OSError:
+            time.sleep(0.2)
+    return False
+
+
 def start_mavsdk_server(binary_path="/tmp/mavsdk/mavsdk_server", port=50051):
     if shutil.which("mavsdk_server"):
         binary_path = shutil.which("mavsdk_server")
@@ -39,7 +51,11 @@ def start_mavsdk_server(binary_path="/tmp/mavsdk/mavsdk_server", port=50051):
     if not os.path.exists(binary_path):
         binary_path = ensure_mavsdk_server(binary_path, port)
 
-    subprocess.Popen([binary_path, "-p", str(port)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if not _wait_for_port(port, timeout=0.5):
+        subprocess.Popen([binary_path, "-p", str(port)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if not _wait_for_port(port, timeout=10):
+            raise RuntimeError(f"MAVSDK server did not become ready on port {port}")
+
     return binary_path
 
 

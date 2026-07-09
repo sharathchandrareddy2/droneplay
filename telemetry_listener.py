@@ -6,6 +6,21 @@ import sys
 from mavsdk_runtime import start_mavsdk_server
 
 
+async def _wait_for_connection(drone, timeout=15):
+    async def _consume_connection_states():
+        async for state in drone.core.connection_state():
+            if state.is_connected:
+                print("-- Connected to virtual drone!")
+                return True
+        return False
+
+    try:
+        return await asyncio.wait_for(_consume_connection_states(), timeout=timeout)
+    except asyncio.TimeoutError:
+        print("No drone connected within the timeout window.")
+        return False
+
+
 def _load_mavsdk_system():
     import platform
 
@@ -37,13 +52,12 @@ async def run():
     await drone.connect(system_address="udpin://0.0.0.0:14540")
 
     print("Waiting for drone to connect...")
-    async for state in drone.core.connection_state():
-        if state.is_connected:
-            print(f"-- Connected to virtual drone!")
-            break
+    connected = await _wait_for_connection(drone, timeout=15)
+    if not connected:
+        return
 
     print("Starting interval telemetry stream (5 seconds)...")
-    
+
     # Launch parallel tasks to pull data every 5 seconds
     asyncio.create_task(print_battery(drone))
     asyncio.create_task(print_altitude(drone))
